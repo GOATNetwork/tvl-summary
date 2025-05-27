@@ -50,10 +50,21 @@ const fetchNativeTokenData = async (): Promise<BridgeInfo | null> => {
 const fetchTokenData = async (token: Token) => {
   try {
     const response = await axios.get(`${EXPLORER_URL}/api/v2/tokens/${token.address}`);
+    if (!response.data.address) {
+      console.debug(`Token ${token.symbol} not found on explorer`);
+      // default total supply to 0
+      token.totalSupply = "0";
+      token.decimals = "18";
+      return;
+    }
     token.totalSupply = response.data.total_supply;
     token.decimals = response.data.decimals;
   } catch (error) {
     console.error(`Error fetching data for token ${token.symbol}:`, error);
+
+    // default total supply to 0
+    token.totalSupply = "0";
+    token.decimals = "18";
   }
 };
 
@@ -62,7 +73,7 @@ const fetchTokenDataWithCache = async (token: Token) => {
   let tokenData = cache.get<{ totalSupply: string; decimals: number }>(cacheKey);
   if (!tokenData) {
     await fetchTokenData(token);
-    cache.set(cacheKey, { totalSupply: token.totalSupply, decimals: token.decimals });
+    cache.set(cacheKey, { totalSupply: token.totalSupply, decimals: token.decimals }, CACHE_TTL);
   } else {
     token.totalSupply = tokenData.totalSupply;
     token.decimals = tokenData.decimals;
